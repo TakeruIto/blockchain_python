@@ -37,3 +37,18 @@ print(binascii.hexlify(master_chaincode))
 print("\n")
 print("master public key")
 print(binascii.hexlify(master_publickey_x))
+
+# -------------------------------
+
+index = 0
+index_bytes = index.to_bytes(8, "big")
+data = master_publickey_x + index_bytes
+result_hmac512 = hmac_sha512(data, master_chaincode)
+
+sum_integer = int.from_bytes(master_secretkey, "big") + int.from_bytes(result_hmac512[:32], "big")
+
+p = 2**256 - 2**32 - 2**9 - 2**8 - 2**7 - 2**6 - 2**4 -1
+child_secretkey = (sum_integer % p).to_bytes(32, "big")
+print("\n")
+print("child private key")
+print(binascii.hexlify(child_secretkey))
