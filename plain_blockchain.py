@@ -85,8 +85,50 @@ class Blockchain():
 
     def add_newblock(self, i):
         last_block = self.chain[-1]
-        block = Block(i+1, last_block.block_hash, "ブロック "+str(i+1), datetime.datetime.now(), last_block.bits)
+        new_bits = self.get_retarget_bits()
+        if new_bits<0:
+            bits = last_block.bits
+        else:
+            bits = new_bits
+        block = Block(i+1, last_block.block_hash, "ブロック "+str(i+1), datetime.datetime.now(), bits)
         self.mining(block)
+
+    def get_retarget_bits(self):
+        if len(self.chain)==0 or len(self.chain)%5!=0:
+            return -1
+        expected_time = 140*5
+
+        if len(self.chain)!=5:
+            first_block = self.chain[-(1+5)]
+        else:
+            first_block = self.chain[0]
+        last_block = self.chain[-1]
+
+        first_time = first_block.timestamp.timestamp()
+        last_time = last_block.timestamp.timestamp()
+
+        total_time = last_time - first_time
+
+        target = last_block.calc_target()
+        delta = total_time/expected_time
+        if delta<0.25:
+            delta = 0.25
+        if delta>4:
+            delta = 4
+
+        new_target = int(target * delta)
+
+        exponent_bytes = (last_block.bits>>24) - 3
+        exponent_bits = exponent_bytes * 8
+        temp_bits = new_target>>exponent_bits
+        if temp_bits!=temp_bits&0xffffff:
+            exponent_bytes += 1
+            exponent_bits += 8
+        elif temp_bits ==temp_bits&0xffff:
+            exponent_bytes -= 1
+            exponent_bits -= 8
+        
+        return ((exponent_bytes + 3) << 24) | (new_target >> exponent_bits)
 
 if __name__=="__main__":
     bc = Blockchain(INITIAL_BITS)
